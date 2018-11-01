@@ -260,6 +260,9 @@ paket-files/
 __pycache__/
 *.pyc
 
+# OpenCV library
+/lib/
+
 # Output images
 *.png
 *.jpg
