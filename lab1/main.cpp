@@ -48,6 +48,9 @@ int main(int argc, char *argv[]) {
     auto png_size = std::filesystem::file_size("image2.png");
     auto jpg_size = std::filesystem::file_size("image2.jpg");
 
+    std::cout << "PNG size : " << png_size << '\n';
+    std::cout << "JPG size : " << jpg_size << '\n';
+
     std::cout << "PNG Ks : " << (color_image.rows * color_image.cols * 24) / 8.0 / static_cast<double>(png_size) << '\n';
     std::cout << "JPG Ks : " << (color_image.rows * color_image.cols * 24) / 8.0 / static_cast<double>(jpg_size) << '\n';
 
