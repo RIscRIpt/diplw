@@ -1,4 +1,5 @@
 #include <iostream>
+#include <map>
 
 #include <conio.h>
 
@@ -53,6 +54,30 @@ void gamma_correction(cv::Mat const &image, cv::Mat &output, double gamma) {
     cv::LUT(image, lookUpTable, output);
 }
 
+void piecewise_linear_transform(cv::Mat const &image, cv::Mat &output, std::map<uchar, uchar> const &map) {
+    if (map.find(0) == map.end() || map.find(255) == map.end())
+        throw std::runtime_error("piecewise_linear_transform: map must contain start [0] and end [255] points!");
+
+    cv::Mat lookUpTable(1, 256, CV_8U);
+    uchar *p = lookUpTable.ptr();
+
+    auto i = map.cbegin();
+    auto nexti = std::next(i);
+    do {
+        float H = static_cast<float>(nexti->second) - static_cast<float>(i->second);
+        float W = static_cast<float>(nexti->first) - static_cast<float>(i->first);
+        float coef = -H / W;
+        for (int input = i->first; input <= nexti->first; input++) {
+            float h = coef * (static_cast<float>(nexti->first) - input);
+            p[input] = nexti->second + h;
+        }
+        i = nexti;
+        nexti = std::next(i);
+    } while (nexti != map.cend());
+
+    cv::LUT(image, lookUpTable, output);
+}
+
 int main() {
     try {
         auto image = cv::imread("image.png", CV_LOAD_IMAGE_GRAYSCALE);
@@ -73,6 +98,16 @@ int main() {
             gamma_correction(image, gammaImage, e.first);
             output_image_and_histogram(e.second, gammaImage);
         }
+
+        std::map<uchar, uchar> pwlfMap{
+            { 0, 255 },
+            { 100, 200 },
+            { 150, 25 },
+            { 255, 0 },
+        };
+        cv::Mat transformedImage;
+        piecewise_linear_transform(image, transformedImage, pwlfMap);
+        output_image_and_histogram("pwlft", transformedImage);
 
         cv::Mat eqHistImage;
         cv::equalizeHist(image, eqHistImage);
@@ -112,13 +147,12 @@ int main() {
 
         cv::Mat noisedImage;
         cv::Mat noiseImage(image.rows, image.cols, CV_8S);
-        cv::randu(noiseImage, cv::Scalar(-64), cv::Scalar(+64));
+        cv::randn(noiseImage, 1, 4);
         cv::add(image, noiseImage, noisedImage, {}, CV_8U);
         output_image_and_histogram("noised", noisedImage);
 
-        cv::Mat noisedBluredImage, clearedImage;
-        cv::blur(noisedImage, noisedBluredImage, { 3, 3 });
-        cv::medianBlur(noisedBluredImage, clearedImage, 7);
+        cv::Mat clearedImage;
+        cv::medianBlur(noisedImage, clearedImage, 3);
         output_image_and_histogram("noise_cleared", clearedImage);
 
     } catch (std::exception const &e) {
