@@ -78,6 +78,84 @@ void piecewise_linear_transform(cv::Mat const &image, cv::Mat &output, std::map<
     cv::LUT(image, lookUpTable, output);
 }
 
+void roberts(cv::Mat const &image, cv::Mat &result) {
+    cv::Mat diff = cv::Mat::zeros({ image.rows, image.cols }, CV_32F);
+    for (int row = 0; row < image.rows - 1; row++) {
+        for (int col = 0; col < image.cols - 1; col++) {
+            auto dx = static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                - static_cast<float>(image.at<uchar>({ row, col }));
+            auto dy = static_cast<float>(image.at<uchar>({ row, col + 1 }))
+                - static_cast<float>(image.at<uchar>({ row + 1, col }));
+            auto d = sqrt(dx * dx + dy * dy);
+            diff.at<float>({ row, col }) = d;
+        }
+    }
+    cv::normalize(diff, diff, 0, 255, cv::NORM_MINMAX);
+    diff.convertTo(result, CV_8U);
+}
+
+void prewitt(cv::Mat const &image, cv::Mat &result) {
+    cv::Mat diff = cv::Mat::zeros({ image.rows, image.cols }, CV_32F);
+    for (int row = 1; row < image.rows - 1; row++) {
+        for (int col = 1; col < image.cols - 1; col++) {
+            auto dx = (static_cast<float>(image.at<uchar>({ row + 1, col - 1 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 0 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                       )
+                - (static_cast<float>(image.at<uchar>({ row - 1, col - 1 }))
+                   + static_cast<float>(image.at<uchar>({ row - 1, col + 0 }))
+                   + static_cast<float>(image.at<uchar>({ row - 1, col + 1 }))
+                   );
+            auto dy = (static_cast<float>(image.at<uchar>({ row - 1, col + 1 }))
+                       + static_cast<float>(image.at<uchar>({ row + 0, col + 1 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                       )
+                - (static_cast<float>(image.at<uchar>({ row - 1, col - 1 }))
+                   + static_cast<float>(image.at<uchar>({ row + 0, col - 1 }))
+                   + static_cast<float>(image.at<uchar>({ row + 1, col - 1 }))
+                   );
+            auto d = sqrt(dx * dx + dy * dy);
+            diff.at<float>({ row, col }) = d;
+        }
+    }
+    cv::normalize(diff, diff, 0, 255, cv::NORM_MINMAX);
+    diff.convertTo(result, CV_8U);
+}
+
+void sobel(cv::Mat const &image, cv::Mat &result) {
+    cv::Mat diff = cv::Mat::zeros({ image.rows, image.cols }, CV_32F);
+    for (int row = 1; row < image.rows - 1; row++) {
+        for (int col = 1; col < image.cols - 1; col++) {
+            auto dx = (static_cast<float>(image.at<uchar>({ row + 1, col - 1 }))
+                       + 2 * static_cast<float>(image.at<uchar>({ row + 1, col + 0 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                       )
+                - (static_cast<float>(image.at<uchar>({ row - 1, col - 1 }))
+                   + 2 * static_cast<float>(image.at<uchar>({ row - 1, col + 0 }))
+                   + static_cast<float>(image.at<uchar>({ row - 1, col + 1 }))
+                   );
+            auto dy = (static_cast<float>(image.at<uchar>({ row - 1, col + 1 }))
+                       + 2 * static_cast<float>(image.at<uchar>({ row + 0, col + 1 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                       )
+                - (static_cast<float>(image.at<uchar>({ row - 1, col - 1 }))
+                   + 2 * static_cast<float>(image.at<uchar>({ row + 0, col - 1 }))
+                   + static_cast<float>(image.at<uchar>({ row + 1, col - 1 }))
+                   );
+            auto d = sqrt(dx * dx + dy * dy);
+            diff.at<float>({ row, col }) = d;
+        }
+    }
+    cv::normalize(diff, diff, 0, 255, cv::NORM_MINMAX);
+    diff.convertTo(result, CV_8U);
+}
+
+auto sd(cv::Mat const &image) {
+    cv::Scalar mean, sd;
+    cv::meanStdDev(image, mean, sd);
+    return sd[0];
+}
+
 int main() {
     try {
         auto image = cv::imread("image.png", CV_LOAD_IMAGE_GRAYSCALE);
@@ -141,9 +219,21 @@ int main() {
             output_image_and_histogram(e.second, medianImage);
         }
 
+        cv::Mat robertsImage;
+        roberts(image, robertsImage);
+        output_image_and_histogram("roberts", robertsImage);
+
+        cv::Mat prewittImage;
+        prewitt(image, prewittImage);
+        output_image_and_histogram("prewitt", prewittImage);
+
         cv::Mat sobelImage;
-        cv::Sobel(image, sobelImage, CV_8U, 1, 1, 3);
+        sobel(image, sobelImage);
         output_image_and_histogram("sobel", sobelImage);
+
+        cv::Mat sobelImage2;
+        cv::Sobel(image, sobelImage2, 0, 1, 1, 3);
+        output_image_and_histogram("sobel2", sobelImage2);
 
         cv::Mat noisedImage;
         cv::Mat noiseImage(image.rows, image.cols, CV_8S);
@@ -151,14 +241,20 @@ int main() {
         cv::add(image, noiseImage, noisedImage, {}, CV_8U);
         output_image_and_histogram("noised", noisedImage);
 
+        std::cout << "Clear image:   " << sd(image) << '\n';
+        std::cout << "Noised image:  " << sd(noisedImage) << '\n';
+
         cv::Mat clearedImage;
         cv::medianBlur(noisedImage, clearedImage, 3);
         output_image_and_histogram("noise_cleared", clearedImage);
 
+        std::cout << "Cleared Image: " << sd(clearedImage) << '\n';
+
     } catch (std::exception const &e) {
         std::cerr << e.what() << '\n';
-        getch();
     }
+
+    getch();
 
     return 0;
 }
