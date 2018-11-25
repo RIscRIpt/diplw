@@ -150,6 +150,34 @@ void sobel(cv::Mat const &image, cv::Mat &result) {
     diff.convertTo(result, CV_8U);
 }
 
+void colorizeEdges(cv::Mat const &image, cv::Mat &result) {
+    cv::Mat newImage = cv::Mat::zeros({ image.rows, image.cols }, CV_8UC3);
+    for (int row = 1; row < image.rows - 1; row++) {
+        for (int col = 1; col < image.cols - 1; col++) {
+            auto dx = (static_cast<float>(image.at<uchar>({ row + 1, col - 1 }))
+                       + 2 * static_cast<float>(image.at<uchar>({ row + 1, col + 0 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                       )
+                - (static_cast<float>(image.at<uchar>({ row - 1, col - 1 }))
+                   + 2 * static_cast<float>(image.at<uchar>({ row - 1, col + 0 }))
+                   + static_cast<float>(image.at<uchar>({ row - 1, col + 1 }))
+                   );
+            auto dy = (static_cast<float>(image.at<uchar>({ row - 1, col + 1 }))
+                       + 2 * static_cast<float>(image.at<uchar>({ row + 0, col + 1 }))
+                       + static_cast<float>(image.at<uchar>({ row + 1, col + 1 }))
+                       )
+                - (static_cast<float>(image.at<uchar>({ row - 1, col - 1 }))
+                   + 2 * static_cast<float>(image.at<uchar>({ row + 0, col - 1 }))
+                   + static_cast<float>(image.at<uchar>({ row + 1, col - 1 }))
+                   );
+            uchar color = (atan2(dy, dx) + CV_PI) / (2 * CV_PI) * 180;
+            uchar d = cv::saturate_cast<uchar>(sqrt(dx * dx + dy * dy));
+            newImage.at<cv::Vec3b>({ row, col }) = { color, 255, d };
+        }
+    }
+    cv::cvtColor(newImage, result, CV_HSV2BGR);
+}
+
 auto sd(cv::Mat const &image) {
     cv::Scalar mean, sd;
     cv::meanStdDev(image, mean, sd);
@@ -249,6 +277,10 @@ int main() {
         output_image_and_histogram("noise_cleared", clearedImage);
 
         std::cout << "Cleared Image: " << sd(clearedImage) << '\n';
+
+        cv::Mat colorizedEdges;
+        colorizeEdges(image, colorizedEdges);
+        output_image_and_histogram("sobel_colorized", colorizedEdges);
 
     } catch (std::exception const &e) {
         std::cerr << e.what() << '\n';
