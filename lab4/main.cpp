@@ -1,8 +1,6 @@
 #include <iostream>
 #include <filesystem>
 
-#include <conio.h>
-
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -93,32 +91,8 @@ int main() {
 
         cv::erode(image, image, makeStructuringElement(3));
         cv::imwrite("20_erode.png", image);
-
-        /*
-        cv::medianBlur(image, image, 7);
-        cv::imwrite("3_blured.png", image);
-
-        cv::dilate(image, image, makeStructuringElement(5));
-        cv::imwrite("4_dilate.png", image);
-
-        cv::erode(image, image, makeStructuringElement(11));
-        cv::imwrite("5_erode.png", image);
-
-        cv::dilate(image, image, makeStructuringElement(7));
-        cv::imwrite("6_dilate.png", image);
-
-        cv::blur(image, image, { 21, 21 });
-        cv::imwrite("7_blur.png", image);
-
-        cv::threshold(image, image, 200.0, 255.0, CV_THRESH_BINARY);
-        cv::imwrite("8_binary.png", image);
-
-        cv::dilate(image, image, makeStructuringElement(17));
-        cv::imwrite("9_dilate.png", image);
-        */
     } catch (std::exception const &e) {
         std::cerr << e.what() << '\n';
-        getch();
     }
     
     return 0;
