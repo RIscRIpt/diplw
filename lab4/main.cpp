@@ -4,15 +4,6 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-using namespace std::literals::string_literals;
-
-template<typename F, typename ...Ps>
-cv::Mat S(std::string const &stepName, F fn, Ps&&... ps) {
-    cv::Mat result = fn(ps...);
-    cv::imwrite(stepName + ".png", result);
-    return result;
-}
-
 cv::Mat makeStructuringElement(int size) {
     return cv::getStructuringElement(cv::MORPH_RECT, cv::Size(size, size));
 }
